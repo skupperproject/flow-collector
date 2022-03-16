@@ -1,0 +1,23 @@
+{
+  "name": "flow-collector",
+  "version": "1.0.0",
+  "description": "Prototype Skupper Flow Collector",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ted-ross/flow-collector.git"
+  },
+  "author": "Ted Ross",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/ted-ross/flow-collector/issues"
+  },
+  "homepage": "https://github.com/ted-ross/flow-collector#readme",
+  "dependencies": {
+    "http": "^0.0.1-security",
+    "rhea": "^3.0.0"
+  }
+}
