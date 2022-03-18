@@ -31,9 +31,9 @@ var routers           = {};  // address => receiver
 exports.Start = function() {
     console.log("[Beacon detector module starting]");
     return new Promise((resolve, reject) => {
-        connectedHandlers.push((conn) => resolve(conn));
         connection = amqp.connect();
         beaconReceiver = connection.open_receiver('mc/sfe.all');
+        resolve();
     });
 }
 

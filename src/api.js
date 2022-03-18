@@ -18,9 +18,10 @@
 "use strict";
 
 const http = require('http');
+const URL  = require('url');
 const data = require('./data.js');
 
-const SERVER_PORT = 8000;
+const SERVER_PORT = 8010;
 var server;
 
 
@@ -32,18 +33,32 @@ const traverseDepthFirst = function(record, result) {
 }
 
 
-const onAll = function(req, res) {
+const parseArgs = function(text) {
+    let result = {};
+
+    if (text) {
+        let pairs = text.split('&');
+        pairs.forEach(pair => {
+            let sides = pair.split('=');
+            if (sides.length == 2) {
+                result[sides[0]] = sides[1];
+            }
+        });
+    }
+
+    return result;
+}
+
+
+const onAll = function(res) {
     let records = data.GetRecords();
     let topLevel = [];
 
     //
     // Find all of the top-level records (that have no parent).
     //
-    for (const [key, record] of Object.entries(records)) {
-        if (record.parent == undefined) {
-            topLevel.push(record);
-        }
-    }
+    let topLevelIds = data.GetTopLevelIds();
+    topLevelIds.forEach(id => topLevel.push(records[id]));
 
     //
     // Add decendents of the top-level records depth first so
@@ -57,21 +72,57 @@ const onAll = function(req, res) {
     //
     // Send the JSON representation of the result.
     //
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(result));
+}
+
+
+const onVanAddrs = function(res, args) {
+    let result = [];
+    let vanAddrs = data.GetVanAddresses();
+    for (const key of Object.keys(vanAddrs)) {
+        result.push(key);
+    }
+
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(result));
+}
+
+
+const onFlows = function(res, args) {
+    let result = [];
+    if (args.vanaddr) {
+        let ids = data.GetVanAddresses()[args.vanaddr] || [];
+        ids.forEach(id => {
+            let record = data.GetRecords()[id] || {};
+            let flows  = record.children || [];
+            flows.forEach(flow => result.push(flow.obj));
+        });
+    }
+
+    res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify(result));
 }
 
 
 const onRequest = function(req, res) {
-    res.setHeader('Content-Type', 'application/json');
-    let path = req.url;
+    let parsed = URL.parse(req.url);
+    let path   = parsed.pathname;
+    let args   = parseArgs(parsed.query);
+    console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
     if (path.substr(0,8) == '/api/v1/') {
         if (path.substr(8,3) == 'all') {
-            onAll(req, res);
+            onAll(res);
+            return;
+        } else if (path.substr(8,8) == 'vanaddrs') {
+            onVanAddrs(res, args);
+            return;
+        } else if (path.substr(8,5) == 'flows') {
+            onFlows(res, args);
             return;
         }
     }
 
-    res.writeHead(404);
     res.end("Invalid Request");
 }
 

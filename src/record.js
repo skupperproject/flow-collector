@@ -39,6 +39,7 @@ const refAttributes = [true,  true,  false, false,
 
 exports.PARENT_INDEX      = "parent";
 exports.COUNTERFLOW_INDEX = "counterflow";
+exports.VAN_ADDRESS_INDEX = "van_address";
 
 
 const adjustValue = function(value, key) {
