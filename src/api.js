@@ -92,14 +92,45 @@ const onVanAddrs = function(res, args) {
 const onFlows = function(res, args) {
     let result = [];
     if (args.vanaddr) {
-        let ids = data.GetVanAddresses()[args.vanaddr] || [];
-        ids.forEach(id => {
-            let record = data.GetRecords()[id] || {};
-            let flows  = record.children || [];
-            flows.forEach(flow => result.push(flow.obj));
-        });
+        let vaddr = data.GetVanAddresses()[args.vanaddr];
+        if (vaddr) {
+            vaddr.listenerIds.forEach(id => {
+                let listener = data.GetRecords()[id];
+                if (listener) {
+                    result.push(listener.obj);
+                    let flows = listener.children || [];
+                    flows.forEach(flow => result.push(flow.obj));
+                }
+            });
+            vaddr.connectorIds.forEach(id => {
+                let connector = data.GetRecords()[id];
+                if (connector) {
+                    result.push(connector.obj);
+                    let flows = connector.children || [];
+                    flows.forEach(flow => result.push(flow.obj));
+                }
+            });
+        }
     }
 
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(result));
+}
+
+
+const onLinks = function(res, args) {
+    let result  = [];
+    let records = data.GetRecords();
+
+    //
+    // Find all of the top-level records (that have no parent).
+    //
+    let linkIds = data.GetLinkIds();
+    linkIds.forEach(id => result.push(records[id].obj));
+
+    //
+    // Send the JSON representation of the result.
+    //
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify(result));
 }
@@ -119,6 +150,9 @@ const onRequest = function(req, res) {
             return;
         } else if (path.substr(8,5) == 'flows') {
             onFlows(res, args);
+            return;
+        } else if (path.substring(8,13) == 'links') {
+            onLinks(res, args);
             return;
         }
     }

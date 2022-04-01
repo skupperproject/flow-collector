@@ -25,6 +25,7 @@ const attributes = ["identity",      "parent",      "startTime",   "endTime",
                     "image_version", "hostname",    "flow_type",   "octets",
                     "start_latency", "backlog",     "method",      "result",
                     "reason",        "name",        "trace",       "build_version",
+                    "link_cost",     "direction",
 ];
 
 const refAttributes = [true,  true,  false, false,
@@ -35,6 +36,7 @@ const refAttributes = [true,  true,  false, false,
                        false, false, false, false,
                        false, false, false, false,
                        false, false, false, false,
+                       false, false,
 ];
 
 exports.PARENT_INDEX      = "parent";

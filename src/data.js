@@ -19,6 +19,41 @@
 
 const record = require('./record.js');
 
+class VanAddress {
+    constructor(vaddr) {
+        this._address      = vaddr;
+        this._listenerIds  = [];
+        this._connectorIds = [];
+
+        vanAddresses[vaddr] = this;
+    }
+
+    addListenerId(id) {
+        this._listenerIds.push(id);
+    }
+
+    addConnectorId(id) {
+        this._connectorIds.push(id);
+    }
+
+    get listenerIds() {
+        return this._listenerIds;
+    }
+
+    get connectorIds() {
+        return this._connectorIds;
+    }
+
+    get obj() {
+        let object = {};
+        object.rtype = 'VAN_ADDRESS';
+        object.id = this._address;
+        object.listenerCount = this._listenerIds.length;
+        object.connectorCount = this._connectorIds.length;
+        return object;
+    }
+}
+
 class Record {
     constructor(rtype, id, rec) {
         this._rtype       = rtype;
@@ -39,6 +74,10 @@ class Record {
 
         if (this._rtype == "LISTENER" || this._rtype == "CONNECTOR") {
             this._newVanAddress();
+        }
+
+        if (this._rtype == "LINK") {
+            linkIds.push(this._id);
         }
     }
 
@@ -85,14 +124,15 @@ class Record {
     _newVanAddress() {
         let addr = this._record[record.VAN_ADDRESS_INDEX];
         if (addr) {
-            if (vanAddresses[addr] == undefined) {
-                vanAddresses[addr] = [ [], [] ];
+            let vanAddr = vanAddresses[addr];
+            if (vanAddr == undefined) {
+                vanAddr = new VanAddress(addr);
             }
 
             if (this._rtype == "LISTENER") {
-                vanAddresses[addr][0].push(this._id);
+                vanAddr.addListenerId(this._id);
             } else {
-                vanAddresses[addr][1].push(this._id);
+                vanAddr.addConnectorId(this._id);
             }
         }
     }
@@ -134,6 +174,11 @@ var records = {};
 var topLevelIds = [];
 
 //
+// linkIds - Identities of router link records
+//
+var linkIds = [];
+
+//
 // idsByType - Identities of records keyed by record type.
 //
 var idsByType = {
@@ -154,6 +199,7 @@ var idsByType = {
 //
 var vanAddresses = {};
 
+
 exports.IncomingRecord = function(rtype, id, record) {
     if (!records[id]) {
         records[id] = new Record(rtype, id, record);
@@ -168,6 +214,10 @@ exports.GetRecords = function() {
 
 exports.GetTopLevelIds = function() {
     return topLevelIds;
+}
+
+exports.GetLinkIds = function() {
+    return linkIds;
 }
 
 exports.GetIdByType = function(type) {
