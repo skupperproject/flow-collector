@@ -77,7 +77,9 @@ class Record {
         }
 
         if (this._rtype == "LINK") {
-            linkIds.push(this._id);
+            if (this._record['name'] && this._record['name'][0] != '0') {
+                this._record['name'] = "0/" + this._record['name'];
+            }
         }
     }
 
@@ -174,11 +176,6 @@ var records = {};
 var topLevelIds = [];
 
 //
-// linkIds - Identities of router link records
-//
-var linkIds = [];
-
-//
 // idsByType - Identities of records keyed by record type.
 //
 var idsByType = {
@@ -214,10 +211,6 @@ exports.GetRecords = function() {
 
 exports.GetTopLevelIds = function() {
     return topLevelIds;
-}
-
-exports.GetLinkIds = function() {
-    return linkIds;
 }
 
 exports.GetIdByType = function(type) {

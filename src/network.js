@@ -72,10 +72,13 @@ amqp.on('connection_open', function(context) {
 amqp.on('message', function(context) {
     if (context.message.subject == 'BEACON') {
         onBeacon(context);
-    } else {
-        var id, rec;
-        [id, rec] = record.FlowToRecord(context.message.body)
-        data.IncomingRecord(context.message.subject, id, rec);
+    } else if (context.message.subject == 'RECORD') {
+        var rtype, id, rec;
+        let recordList = context.message.body;
+        recordList.forEach(item => {
+            [rtype, id, rec] = record.FlowToRecord(item)
+            data.IncomingRecord(rtype, id, rec);
+        });
     }
 });
 

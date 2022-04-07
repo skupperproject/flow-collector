@@ -125,7 +125,7 @@ const onLinks = function(res, args) {
     //
     // Find all of the top-level records (that have no parent).
     //
-    let linkIds = data.GetLinkIds();
+    let linkIds = data.GetIdByType('LINK');
     linkIds.forEach(id => result.push(records[id].obj));
 
     //

@@ -17,35 +17,77 @@
 
 "use strict";
 
-const attributes = ["identity",      "parent",      "startTime",   "endTime",
-                    "counterflow",   "peer",        "process",     "sib_ordinal",
-                    "location",      "provider",    "platform",    "namespace",
-                    "mode",          "source_host", "dest_host",   "protocol",
-                    "source_port",   "dest_port",   "van_address", "image_name",
-                    "image_version", "hostname",    "flow_type",   "octets",
-                    "start_latency", "backlog",     "method",      "result",
-                    "reason",        "name",        "trace",       "build_version",
-                    "link_cost",     "direction",
+const recordTypes = [
+    "SITE",
+    "ROUTER",
+    "LINK",
+    "CONTROLLER",
+    "LISTENER",
+    "CONNECTOR",
+    "FLOW",
+    "PROCESS",
+    "INGRESS",
+    "EGRESS",
 ];
 
-const refAttributes = [true,  true,  false, false,
-                       true,  true,  false, false,
+const attributes = [
+    "recordType",
+    "identity",
+    "parent",
+    "startTime",
+    "endTime",
+    "counterflow",
+    "peer",
+    "process",
+    "sibOrdinal",
+    "location",
+    "provider",
+    "platform",
+    "namespace",
+    "mode",
+    "sourceHost",
+    "destHost",
+    "protocol",
+    "sourcePort",
+    "destPort",
+    "vanAddress",
+    "imageName",
+    "imageVersion",
+    "hostname",
+    "octets",
+    "latency",
+    "transitLatency",
+    "backlog",
+    "method",
+    "result",
+    "reason",
+    "name",
+    "trace",
+    "buildVersion",
+    "linkCost",
+    "direction",
+];
+
+const refAttributes = [false, true,  true,  false,
+                       false, true,  true,  false,
                        false, false, false, false,
                        false, false, false, false,
                        false, false, false, false,
                        false, false, false, false,
                        false, false, false, false,
                        false, false, false, false,
-                       false, false,
+                       false, false, false,
 ];
 
 exports.PARENT_INDEX      = "parent";
 exports.COUNTERFLOW_INDEX = "counterflow";
-exports.VAN_ADDRESS_INDEX = "van_address";
+exports.VAN_ADDRESS_INDEX = "vanAddress";
 
 
 const adjustValue = function(value, key) {
-    if (refAttributes[key]) {
+    if (key == 0) {
+        return recordTypes[value];
+    } else if (refAttributes[key]) {
         return `${value[0]}:${value[1]}:${value[2]}`;
     } else {
         return value;
@@ -54,14 +96,16 @@ const adjustValue = function(value, key) {
 
 
 exports.FlowToRecord = function(flow) {
-    var id;
+    var rtype, id;
     let record = {};
     for (const [key, value] of Object.entries(flow)) {
         if (key == 0) {
+            rtype = adjustValue(value, key);
+        } else if (key == 1) {
             id = adjustValue(value, key);
         } else {
             record[attributes[key]] = adjustValue(value, key);
         }
     }
-    return [id, record];
+    return [rtype, id, record];
 }
