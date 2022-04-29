@@ -66,6 +66,7 @@ const attributes = [
     "buildVersion",
     "linkCost",
     "direction",
+    "resource",
 ];
 
 const refAttributes = [false, true,  true,  false,
@@ -76,7 +77,7 @@ const refAttributes = [false, true,  true,  false,
                        false, false, false, false,
                        false, false, false, false,
                        false, false, false, false,
-                       false, false, false,
+                       false, false, false, false,
 ];
 
 exports.PARENT_INDEX      = "parent";

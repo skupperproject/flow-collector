@@ -27,6 +27,7 @@ var connection;
 var beaconReceiver;
 var connectedHandlers = [];
 var routers           = {};  // address => receiver
+var connected         = false;
 
 exports.Start = function() {
     console.log("[Beacon detector module starting]");
@@ -63,9 +64,18 @@ const onBeacon = function(context) {
 
 
 amqp.on('connection_open', function(context) {
-    console.log("AMQP connection to the network is open");
+    console.log("Connection to the VAN is open");
+    connected = true;
     connectedHandlers.forEach(handler => handler(context.connection));
     connectedHandlers = [];
+});
+
+
+amqp.on('disconnected', function(context) {
+    if (connected) {
+        connected = false;
+        console.log("Connection to the VAN has been lost");
+    }
 });
 
 

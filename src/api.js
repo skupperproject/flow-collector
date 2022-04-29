@@ -97,17 +97,13 @@ const onFlows = function(res, args) {
             vaddr.listenerIds.forEach(id => {
                 let listener = data.GetRecords()[id];
                 if (listener) {
-                    result.push(listener.obj);
-                    let flows = listener.children || [];
-                    flows.forEach(flow => result.push(flow.obj));
+                    traverseDepthFirst(listener, result);
                 }
             });
             vaddr.connectorIds.forEach(id => {
                 let connector = data.GetRecords()[id];
                 if (connector) {
-                    result.push(connector.obj);
-                    let flows = connector.children || [];
-                    flows.forEach(flow => result.push(flow.obj));
+                    traverseDepthFirst(connector, result);
                 }
             });
         }

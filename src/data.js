@@ -63,7 +63,9 @@ class Record {
         this._peerId      = undefined;
 
         if (this.parent) {
-            records[this.parent].addChild(this.id);
+            if (this.parent in records) {
+                records[this.parent].addChild(this.id);
+            }
         } else {
             topLevelIds.push(this._id);
         }
@@ -145,6 +147,7 @@ class Record {
 
     update(rec) {
         let prevParent = this.parent;
+        let prevAddr   = this._record[record.VAN_ADDRESS_INDEX];
         let checkPeer  = false;
         
         for (const [key, value] of Object.entries(rec)) {
@@ -157,6 +160,10 @@ class Record {
         if (!prevParent && this.parent) {
             records[this.parent].addChild(this.id);
             topLevelIds.pop(this.id);
+        }
+
+        if ((this._rtype == "LISTENER" || this._rtype == "CONNECTOR") && !prevAddr) {
+            this._newVanAddress();
         }
 
         if (checkPeer && !this._peerId) {
@@ -192,7 +199,7 @@ var idsByType = {
 };
 
 //
-// vanAddresses - { vanAddress => [ [listenerIds], [connectorIds] ]}
+// vanAddresses - { vanAddress => VanAddress object}
 //
 var vanAddresses = {};
 
