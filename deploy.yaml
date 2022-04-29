@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: skupper-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      application: skupper-collector
+  template:
+    metadata:
+      labels:
+        application: skupper-collector
+    spec:
+      containers:
+      - name: skupper-collector
+        image: docker.io/tedross/skupper-collector:latest
+        imagePullPolicy: Always
+        volumeMounts:
+        - mountPath: /etc/messaging/
+          name: skupper-local-client
+      volumes:
+      - name: skupper-local-client
+        secret:
+          secretName: skupper-local-client
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: skupper-collector
+spec:
+  ports:
+  - port: 8010
+    protocol: TCP
+    targetPort: 8010
+  selector:
+    application: skupper-collector
+  type: ClusterIP
