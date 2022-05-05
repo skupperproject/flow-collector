@@ -66,6 +66,7 @@ This query returns a list of `ROUTER` records having the following attributes:
 |`name`|The name of the router as referenced in the network topology.|
 |`buildVersion`|The build version for the router code.|
 
+---
 `api/v1alpha1/links`
 
 This query returns a list of `LINK` records.  Note that each router reports all of its inter-router links.  This means that for every inter-router connection, two `LINK` records will be provided, one from each router's perspective.
@@ -77,3 +78,46 @@ This query returns a list of `LINK` records.  Note that each router reports all 
 |`name`|The name of the peer router, i.e. the router to which this link connects.|
 |`linkCost`|The cost configured for this link.|
 |`direction`|`outgoing` for links established from this router.  `incoming` for links established by the peer router.|
+
+---
+`api/v1alpha1/vanaddrs`
+
+This query does not return VAN-Flow records.  It simply returns a list of address strings.  Each address represents a service that is exposed across the network.
+
+---
+`api/v1alpha1/flows?vanaddr=<address>`
+
+This query returns records that are related to traffic flows for a particular service.  The records types are `LISTENER` for ingress points, `CONNECTOR` for egress points to running server pods, and `FLOW` for units of communication between listeners and connectors.
+
+`LISTENER`
+
+|Attribute|Description|
+|----|----|
+|`parent`|The ID of the router on which this listener is configured.|
+|`destHost`|The hostname or IP address on which this listener is exposed.|
+|`destPort`|The port on which this listener is exposed.|
+|`protocol`|The protocol over which service is offered by this listener.|
+|`vanAddress`|The VAN address used to route traffic over the network.|
+
+`CONNECTOR`
+
+|Attribute|Description|
+|----|----|
+|`parent`|The ID of the router on which this connector is configured.|
+|`destHost`|The destination host or IP address for the running service/pod.|
+|`destPort`|The port over which the running service/pod offers access.|
+|`vanAddress`|The VAN address used to route traffic over the network.|
+
+`FLOW`
+
+Flow records are uni-directional which means that for almost all protocol traffic will be described by two flow records, one for the client-to-server direction and another for the server-to-client direction.
+
+|Attribute|Description|
+|----|----|
+|`parent`|The ID of the `LISTENER` or `CONNECTOR` record that is the endpoint for this flow.|
+|`counterflow`|The ID of the flow representing the other direction of traffic flow for this protocol exchange.|
+|`sourceHost`|The hostname or IP address of the source side of this connection.  The destination side IP can be determined from this record's parent.|
+|`sourcePort`|The port of the source side of this connection.|
+|`octets`|The number of octets carried over this flow.  Note that for long-lived flows, this value will increase over time.|
+|`latency`|The latency experienced for this flow.  For client-side flows (the parent is a listener), this is the latency experienced by the client.  For server-side flows (the parent is a connector), this is the latency of the actual server/pod handling the traffic.  The cross-network latency can be computed by finding the difference between the two latencies.|
+|`trace`|A list (separated by `|` characters) of the routers through which this traffic flowed.|
