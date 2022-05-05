@@ -137,20 +137,21 @@ const onRequest = function(req, res) {
     let path   = parsed.pathname;
     let args   = parseArgs(parsed.query);
     console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
-    if (path.substring(0,8) == '/api/v1/') {
-        if (path.substring(8,11) == 'all') {
+    if (path.substring(0,14) == '/api/v1alpha1/') {
+        path = path.substring(14)
+        if (path.substring(0,3) == 'all') {
             onAll(res);
             return;
-        } else if (path.substring(8,16) == 'vanaddrs') {
+        } else if (path.substring(0,8) == 'vanaddrs') {
             onVanAddrs(res, args);
             return;
-        } else if (path.substring(8,13) == 'flows') {
+        } else if (path.substring(0,5) == 'flows') {
             onFlows(res, args);
             return;
-        } else if (path.substring(8,13) == 'links') {
+        } else if (path.substring(0,5) == 'links') {
             onRecordType(res, 'LINK', args);
             return;
-        } else if (path.substring(8,15) == 'routers') {
+        } else if (path.substring(0,7) == 'routers') {
             onRecordType(res, 'ROUTER', args);
             return;
         }
