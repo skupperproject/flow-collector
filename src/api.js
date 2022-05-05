@@ -114,14 +114,14 @@ const onFlows = function(res, args) {
 }
 
 
-const onLinks = function(res, args) {
+const onRecordType = function(res, rType, args) {
     let result  = [];
     let records = data.GetRecords();
 
     //
     // Find all of the top-level records (that have no parent).
     //
-    let linkIds = data.GetIdByType('LINK');
+    let linkIds = data.GetIdByType(rType);
     linkIds.forEach(id => result.push(records[id].obj));
 
     //
@@ -137,18 +137,21 @@ const onRequest = function(req, res) {
     let path   = parsed.pathname;
     let args   = parseArgs(parsed.query);
     console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
-    if (path.substr(0,8) == '/api/v1/') {
-        if (path.substr(8,3) == 'all') {
+    if (path.substring(0,8) == '/api/v1/') {
+        if (path.substring(8,11) == 'all') {
             onAll(res);
             return;
-        } else if (path.substr(8,8) == 'vanaddrs') {
+        } else if (path.substring(8,16) == 'vanaddrs') {
             onVanAddrs(res, args);
             return;
-        } else if (path.substr(8,5) == 'flows') {
+        } else if (path.substring(8,13) == 'flows') {
             onFlows(res, args);
             return;
         } else if (path.substring(8,13) == 'links') {
-            onLinks(res, args);
+            onRecordType(res, 'LINK', args);
+            return;
+        } else if (path.substring(8,15) == 'routers') {
+            onRecordType(res, 'ROUTER', args);
             return;
         }
     }
