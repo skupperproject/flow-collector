@@ -110,7 +110,7 @@ This query returns records that are related to traffic flows for a particular se
 
 `FLOW`
 
-Flow records are uni-directional which means that for almost all protocol traffic will be described by two flow records, one for the client-to-server direction and another for the server-to-client direction.
+Flow records are uni-directional which means that almost all protocol traffic will be described by two flow records, one for the client-to-server direction and another for the server-to-client direction.
 
 |Attribute|Description|
 |----|----|
@@ -120,4 +120,4 @@ Flow records are uni-directional which means that for almost all protocol traffi
 |`sourcePort`|The port of the source side of this connection.|
 |`octets`|The number of octets carried over this flow.  Note that for long-lived flows, this value will increase over time.|
 |`latency`|The latency experienced for this flow.  For client-side flows (the parent is a listener), this is the latency experienced by the client.  For server-side flows (the parent is a connector), this is the latency of the actual server/pod handling the traffic.  The cross-network latency can be computed by finding the difference between the two latencies.|
-|`trace`|A list (separated by `|` characters) of the routers through which this traffic flowed.|
+|`trace`|A list (separated by vertical bar characters) of the routers through which this traffic flowed.|
