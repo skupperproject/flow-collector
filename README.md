@@ -53,9 +53,11 @@ The VAN-Flow records come in a number of various types.  Many of the types share
 
 ### Queries
 
-`/api/v1alpha1/routers`
+`/api/v1alpha1/topology`
 
-This query returns a list of `ROUTER` records having the following attributes:
+This query returns a list of `ROUTER` and `LINK` records.  The `LINK` records shall be filtered such that only those with a direction of `incoming` will be provided.  This is sufficient information to completely display the network topology.
+
+`ROUTER`
 
 |Attribute|Description|
 |---------|-----------|
@@ -66,10 +68,7 @@ This query returns a list of `ROUTER` records having the following attributes:
 |`name`|The name of the router as referenced in the network topology.|
 |`buildVersion`|The build version for the router code.|
 
----
-`api/v1alpha1/links`
-
-This query returns a list of `LINK` records.  Note that each router reports all of its inter-router links.  This means that for every inter-router connection, two `LINK` records will be provided, one from each router's perspective.
+`LINK`
 
 |Attribute|Description|
 |---------|-----------|
@@ -78,6 +77,11 @@ This query returns a list of `LINK` records.  Note that each router reports all 
 |`name`|The name of the peer router, i.e. the router to which this link connects.|
 |`linkCost`|The cost configured for this link.|
 |`direction`|`outgoing` for links established from this router.  `incoming` for links established by the peer router.|
+
+---
+`api/v1alpha1/links`
+
+This query returns the entire set of links, including `incoming` and `outgoing` directions.  Note that every inter-router link will be represented by two records: one from the perspective of each linked router.
 
 ---
 `api/v1alpha1/vanaddrs`
