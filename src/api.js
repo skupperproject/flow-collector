@@ -132,6 +132,35 @@ const onRecordType = function(res, rType, args) {
 }
 
 
+const onTopology = function(res, args) {
+    let result  = [];
+    let records = data.GetRecords();
+
+    //
+    // Get the IDs for routers and links
+    //
+    let routerIds = data.GetIdByType('ROUTER');
+    let linkIds   = data.GetIdByType('LINK');
+
+    //
+    // Return the routers then the links
+    //
+    routerIds.forEach(id => result.push(records[id].obj));
+    linkIds.forEach(id => {
+        let link = records[id].obj;
+        if (link.direction == 'incoming') {
+            result.push(link);
+        }
+    });
+
+    //
+    // Send the JSON representation of the result.
+    //
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(result));
+}
+
+
 const onRequest = function(req, res) {
     let parsed = URL.parse(req.url);
     let path   = parsed.pathname;
@@ -151,8 +180,11 @@ const onRequest = function(req, res) {
         } else if (path.substring(0,5) == 'links') {
             onRecordType(res, 'LINK', args);
             return;
-        } else if (path.substring(0,7) == 'routers') {
+        } else if (path.substring(0,7) == 'routers') { // deprecate
             onRecordType(res, 'ROUTER', args);
+            return;
+        } else if (path.substring(0,8) == 'topology') {
+            onTopology(res, args);
             return;
         }
     }
