@@ -79,6 +79,11 @@ This query returns a list of `ROUTER` and `LINK` records.  The `LINK` records sh
 |`direction`|`outgoing` for links established from this router.  `incoming` for links established by the peer router.|
 
 ---
+`api/v1alpha1/routers`
+
+This query returns the entire set of routers.
+
+---
 `api/v1alpha1/links`
 
 This query returns the entire set of links, including `incoming` and `outgoing` directions.  Note that every inter-router link will be represented by two records: one from the perspective of each linked router.
@@ -86,7 +91,15 @@ This query returns the entire set of links, including `incoming` and `outgoing` 
 ---
 `api/v1alpha1/vanaddrs`
 
-This query does not return VAN-Flow records.  It simply returns a list of address strings.  Each address represents a service that is exposed across the network.
+This query returns a list of `VAN_ADDRESS` records.  Each address represents a service that is exposed across the network.
+
+`VAN_ADDRESS`
+
+|Attribute|Description|
+|----|----|
+|id|The service address.  Note that this is in a different form from most of the other record identifiers.|
+|listenerCount|The number of listeners for this address in the network.|
+|connectorCount|Ther number of connectors for this address in the network.  This corresponds to the number of server instances providing the service in question.|
 
 ---
 `api/v1alpha1/flows?vanaddr=<address>`
@@ -125,3 +138,9 @@ Flow records are uni-directional which means that almost all protocol traffic wi
 |`octets`|The number of octets carried over this flow.  Note that for long-lived flows, this value will increase over time.|
 |`latency`|The latency experienced for this flow.  For client-side flows (the parent is a listener), this is the latency experienced by the client.  For server-side flows (the parent is a connector), this is the latency of the actual server/pod handling the traffic.  The cross-network latency can be computed by finding the difference between the two latencies.|
 |`trace`|A list (separated by vertical bar characters) of the routers through which this traffic flowed.|
+
+### Watch Queries
+
+A watch query is one in which the normal query response is sent to the requestor, but the connection is then held open so that any changes to the query set can be sent immediately.  The format of the reply is a single JSON list with the initial query response followed by individual JSON objects that represent changes to the records.
+
+An example watch query is `/api/v1alpha1/topology?watch=1`  Such a query can be used to drive a graphical display of the network topology (routers and link) with topology and metric changes.
