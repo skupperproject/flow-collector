@@ -26,14 +26,22 @@ class VanAddress {
         this._connectorIds = [];
 
         vanAddresses[vaddr] = this;
+        this._fireWatches();
+    }
+
+    _fireWatches() {
+        let watchList = recordWatches['VAN_ADDRESS'] || [];
+        watchList.forEach(watch => watch.invoke(this))
     }
 
     addListenerId(id) {
         this._listenerIds.push(id);
+        this._fireWatches();
     }
 
     addConnectorId(id) {
         this._connectorIds.push(id);
+        this._fireWatches();
     }
 
     get listenerIds() {
@@ -83,6 +91,9 @@ class Record {
                 this._record['name'] = "0/" + this._record['name'];
             }
         }
+
+        let watches = recordWatches[rtype] || [];
+        watches.forEach(watch => watch.invoke(this));
     }
 
     get id() {
@@ -169,6 +180,20 @@ class Record {
         if (checkPeer && !this._peerId) {
             this._linkPeer();
         }
+
+        let watches = recordWatches[this._rtype] || [];
+        watches.forEach(watch => watch.invoke(this));
+    }
+}
+
+class Watch {
+    constructor(onUpdate, arg1) {
+        this._onUpdate = onUpdate;
+        this._arg1     = arg1;
+    }
+
+    invoke(record) {
+        this._onUpdate(record, this._arg1);
     }
 }
 
@@ -203,6 +228,28 @@ var idsByType = {
 //
 var vanAddresses = {};
 
+//
+// Record-Type watches - { recordType => [Watch] }
+//
+var recordWatches = {
+    'SITE'        : [],
+    'ROUTER'      : [],
+    'LINK'        : [],
+    'CONTROLLER'  : [],
+    'LISTENER'    : [],
+    'CONNECTOR'   : [],
+    'FLOW'        : [],
+    'PROCESS'     : [],
+    'INGRESS'     : [],
+    'EGRESS'      : [],
+    'VAN_ADDRESS' : [],
+};
+
+//
+// Flow watches - { vanAddr => [Watch] }
+//
+var flowWatches = {};
+
 
 exports.IncomingRecord = function(rtype, id, record) {
     if (!records[id]) {
@@ -226,4 +273,31 @@ exports.GetIdByType = function(type) {
 
 exports.GetVanAddresses = function() {
     return vanAddresses;
+}
+
+exports.WatchRecord = function(rType, onUpdate, arg1) {
+    let watch = new Watch(onUpdate, arg1);
+    recordWatches[rType].push(watch);
+    console.log(`Watch established for type ${rType}`);
+    return watch;
+}
+
+exports.UnwatchRecord = function(rType, watch) {
+    recordWatches[rType] = recordWatches[rType].filter(w => w != watch);
+    console.log(`Watch cancelled for type ${rType}`);
+}
+
+exports.WatchFlows = function(vanaddr, onUpdate, arg1) {
+    let watch = new Watch(onUpdate, arg1);
+    if (flowWatches[vanaddr] == undefined) {
+        flowWatches[vanaddr] = [];
+    }
+    flowWatches[vanaddr].push(watch);
+    console.log(`Flow watch established for vanaddr ${vanaddr}`);
+    return watch;
+}
+
+exports.UnwatchFlows = function(vanaddr, watch) {
+    flowWatches[vanaddr] = flowWatches[vanaddr].filter(w => w != watch);
+    console.log(`Flow watch cancelled for vanaddr ${vanaddr}`);
 }
