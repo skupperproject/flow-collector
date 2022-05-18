@@ -74,8 +74,6 @@ class Record {
             if (this.parent in records) {
                 records[this.parent].addChild(this.id);
             }
-        } else {
-            topLevelIds.push(this._id);
         }
 
         idsByType[this._rtype].push(this._id);
@@ -170,7 +168,6 @@ class Record {
         
         if (!prevParent && this.parent) {
             records[this.parent].addChild(this.id);
-            topLevelIds.pop(this.id);
         }
 
         if ((this._rtype == "LISTENER" || this._rtype == "CONNECTOR") && !prevAddr) {
@@ -201,11 +198,6 @@ class Watch {
 // records - All accumulated records keyed by their identities.
 //
 var records = {};
-
-//
-// topLevelIds - Identities of records for which there is no parent.
-//
-var topLevelIds = [];
 
 //
 // idsByType - Identities of records keyed by record type.
@@ -261,10 +253,6 @@ exports.IncomingRecord = function(rtype, id, record) {
 
 exports.GetRecords = function() {
     return records;
-}
-
-exports.GetTopLevelIds = function() {
-    return topLevelIds;
 }
 
 exports.GetIdByType = function(type) {

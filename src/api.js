@@ -62,33 +62,6 @@ const badRequest = function(res, reason) {
 }
 
 
-const onAll = function(res) {
-    let records = data.GetRecords();
-    let topLevel = [];
-
-    //
-    // Find all of the top-level records (that have no parent).
-    //
-    let topLevelIds = data.GetTopLevelIds();
-    topLevelIds.forEach(id => topLevel.push(records[id]));
-
-    //
-    // Add decendents of the top-level records depth first so
-    // we report parents before children.
-    //
-    let result = [];
-    topLevel.forEach(record => {
-        traverseDepthFirst(record, result);
-    });
-
-    //
-    // Send the JSON representation of the result.
-    //
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify(result));
-}
-
-
 const onVanAddrs = function(res, args) {
     let result = [];
     let vanAddrs = data.GetVanAddresses();
@@ -236,10 +209,7 @@ const onRequest = function(req, res) {
     console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
     if (path.substring(0,14) == '/api/v1alpha1/') {
         path = path.substring(14)
-        if (path.substring(0,3) == 'all') {
-            onAll(res);
-            return;
-        } else if (path.substring(0,8) == 'vanaddrs') {
+        if (path.substring(0,8) == 'vanaddrs') {
             onVanAddrs(res, args);
             return;
         } else if (path.substring(0,5) == 'flows') {
