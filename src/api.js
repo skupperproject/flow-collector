@@ -62,7 +62,7 @@ const badRequest = function(res, reason) {
 }
 
 
-const onVanAddrs = function(res, args) {
+const getVanAddrs = function(res, args) {
     let result = [];
     let vanAddrs = data.GetVanAddresses();
     for (const value of Object.values(vanAddrs)) {
@@ -82,7 +82,7 @@ const onVanAddrs = function(res, args) {
 }
 
 
-const onFlows = function(res, args) {
+const getFlows = function(res, args) {
     res.setHeader('Content-Type', 'application/json');
 
     if (!args.vanaddr) {
@@ -119,7 +119,7 @@ const onFlows = function(res, args) {
 }
 
 
-const onRecordType = function(res, rType, args) {
+const getRecordType = function(res, rType, args) {
     let result  = [];
     let records = data.GetRecords();
 
@@ -145,7 +145,7 @@ const onRecordType = function(res, rType, args) {
 }
 
 
-const onTopology = function(res, args) {
+const getTopology = function(res, args) {
     let result  = [];
     let records = data.GetRecords();
 
@@ -207,27 +207,37 @@ const onRequest = function(req, res) {
     let path   = parsed.pathname;
     let args   = parseArgs(parsed.query);
     console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
-    if (path.substring(0,14) == '/api/v1alpha1/') {
-        path = path.substring(14)
-        if (path.substring(0,8) == 'vanaddrs') {
-            onVanAddrs(res, args);
-            return;
-        } else if (path.substring(0,5) == 'flows') {
-            onFlows(res, args);
-            return;
-        } else if (path.substring(0,5) == 'links') {
-            onRecordType(res, 'LINK', args);
-            return;
-        } else if (path.substring(0,7) == 'routers') {
-            onRecordType(res, 'ROUTER', args);
-            return;
-        } else if (path.substring(0,8) == 'topology') {
-            onTopology(res, args);
-            return;
+    if (req.method == 'GET') {
+        if (path.substring(0,14) == '/api/v1alpha1/') {
+            path = path.substring(14)
+            if (path == 'vanaddrs') {
+                getVanAddrs(res, args);
+                return;
+            } else if (path == 'flows') {
+                getFlows(res, args);
+                return;
+            } else if (path == 'links') {
+                getRecordType(res, 'LINK', args);
+                return;
+            } else if (path == 'routers') {
+                getRecordType(res, 'ROUTER', args);
+                return;
+            } else if (path == 'listeners') {
+                getRecordType(res, 'LISTENER', args);
+                return;
+            } else if (path == 'connectors') {
+                getRecordType(res, 'CONNECTOR', args);
+                return;
+            } else if (path == 'topology') {
+                getTopology(res, args);
+                return;
+            }
         }
+        badRequest(res, "Invalid GET Query");
+        return;
     }
 
-    res.end("Invalid Request");
+    badRequest(res, "Unsupported Method");
 }
 
 
