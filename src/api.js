@@ -22,7 +22,6 @@ const URL  = require('url');
 const data = require('./data.js');
 
 const SERVER_PORT = 8010;
-var server;
 
 
 const traverseDepthFirst = function(record, result) {
@@ -50,8 +49,12 @@ const parseArgs = function(text) {
 }
 
 
-const isWatch = function(args) {
+const argsWatch = function(args) {
     return args.watch && (args.watch == 'true' || args.watch == '1');
+}
+
+const argsIncludeDeleted = function(args) {
+    return args.includeDeleted && (args.includeDeleted == 'true' || args.includeDeleted == '1');
 }
 
 
@@ -71,10 +74,11 @@ const getVanAddrs = function(res, args) {
 
     res.setHeader('Content-Type', 'application/json');
     res.write(JSON.stringify(result));
-    if (isWatch(args)) {
+    if (argsWatch(args)) {
         let watch = data.WatchRecord('VAN_ADDRESS', onRecordWatch, res);
         res.on('close', function() {
             data.UnwatchRecord('VAN_ADDRESS', watch);
+            res.end();
         });
     } else {
         res.end();
@@ -82,6 +86,16 @@ const getVanAddrs = function(res, args) {
 }
 
 
+/**
+ * Process a "flows" request.  Return van-address, listener, connector, and flow
+ * records associated with the supplied van address.
+ *
+ * If the van address is unknown, an empty set will be returned and, if requested,
+ * a watch will be established in case that address appears in the future.
+ *
+ * @param {http.ServerResponse} res HTTP response object
+ * @param {*} args Arguments supplied with the GET query
+ */
 const getFlows = function(res, args) {
     res.setHeader('Content-Type', 'application/json');
 
@@ -93,6 +107,7 @@ const getFlows = function(res, args) {
     let result = [];
     let vaddr = data.GetVanAddresses()[args.vanaddr];
     if (vaddr) {
+        result.push(vaddr.obj);
         vaddr.listenerIds.forEach(id => {
             let listener = data.GetRecords()[id];
             if (listener) {
@@ -108,10 +123,11 @@ const getFlows = function(res, args) {
     }
 
     res.write(JSON.stringify(result));
-    if (isWatch(args)) {
+    if (argsWatch(args)) {
         let watch = data.WatchFlows(args.vanaddr, onRecordWatch, res);
         res.on('close', function() {
             data.UnwatchFlows(args.vanaddr, watch);
+            res.end();
         });
     } else {
         res.end();
@@ -119,6 +135,13 @@ const getFlows = function(res, args) {
 }
 
 
+/**
+ * General get processor for a single record type.
+ *
+ * @param {http.ServerResponse} res HTTP response on which to send the content
+ * @param {string} rType The record type to be queried
+ * @param {*} args Arguments supplied with the GET query
+ */
 const getRecordType = function(res, rType, args) {
     let result  = [];
     let records = data.GetRecords();
@@ -134,10 +157,11 @@ const getRecordType = function(res, rType, args) {
     //
     res.setHeader('Content-Type', 'application/json');
     res.write(JSON.stringify(result));
-    if (isWatch(args)) {
+    if (argsWatch(args)) {
         let watch = data.WatchRecord(rType, onRecordWatch, res);
         res.on('close', function() {
             data.UnwatchRecord(rType, watch);
+            res.end();
         });
     } else {
         res.end();
@@ -145,6 +169,14 @@ const getRecordType = function(res, rType, args) {
 }
 
 
+/**
+ * Process a topology query request.  Return all router records and link records representing
+ * incoming links.  Since incoming and outgoing link records are redundant, this query filters
+ * out the outgoing links to present a more efficient data set for the network topology.
+ *
+ * @param {http.ServerResponse} res HTTP response object
+ * @param {*} args Arguments supplied with the GET query
+ */
 const getTopology = function(res, args) {
     let result  = [];
     let records = data.GetRecords();
@@ -160,13 +192,13 @@ const getTopology = function(res, args) {
     //
     routerIds.forEach(id => {
         let router = records[id].obj;
-        if (args.includeDeleted || router.endTime == undefined) {
+        if (argsIncludeDeleted(args) || router.endTime == undefined) {
             result.push(router);
         }
     });
     linkIds.forEach(id => {
         let link = records[id].obj;
-        if (link.direction == 'incoming' && (args.includeDeleted || link.endTime == undefined)) {
+        if (link.direction == 'incoming' && (argsIncludeDeleted(args) || link.endTime == undefined)) {
             result.push(link);
         }
     });
@@ -176,19 +208,26 @@ const getTopology = function(res, args) {
     //
     res.setHeader('Content-Type', 'application/json');
     res.write(JSON.stringify(result));
-    if (isWatch(args)) {
+    if (argsWatch(args)) {
         let routerWatch = data.WatchRecord('ROUTER', onTopologyWatch, res);
         let linkWatch   = data.WatchRecord('LINK', onTopologyWatch, res);
         res.on('close', function() {
             data.UnwatchRecord('ROUTER', routerWatch);
             data.UnwatchRecord('LINK', linkWatch);
+            res.end();
         });
     } else {
         res.end();
     }
 }
 
-
+/**
+ * Watch handler for the topology query.  This handler filters out outgoing links to match
+ * the results of the original topology list.
+ *
+ * @param {Record} record The record that triggered the watch
+ * @param {http.ServerResponse} httpRes The HTTP response for the watch
+ */
 const onTopologyWatch = function(record, httpRes) {
     let obj = record.obj;
     if (obj.direction == undefined || obj.direction == 'incoming') {
@@ -197,6 +236,13 @@ const onTopologyWatch = function(record, httpRes) {
 }
 
 
+/**
+ * General watch handler that doesn't do any filtering.  Simply generate a response
+ * chunk that contains the JSON representation of the record.
+ *
+ * @param {Record} record The record that triggered the watch
+ * @param {http.ServerResponse} httpRes The HTTP response for the watch
+ */
 const onRecordWatch = function(record, httpRes) {
     httpRes.write(JSON.stringify(record.obj));
 }
@@ -244,7 +290,7 @@ const onRequest = function(req, res) {
 exports.Start = function() {
     return new Promise((resolve, reject) => {
         console.log('[API module starting]');
-        server = http.createServer((req, res) => onRequest(req, res)).listen(SERVER_PORT);
+        http.createServer((req, res) => onRequest(req, res)).listen(SERVER_PORT);
         console.log(`API server listening on port ${SERVER_PORT}`);
         resolve();
     });
