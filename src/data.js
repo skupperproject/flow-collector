@@ -24,6 +24,8 @@ class VanAddress {
         this._address      = vaddr;
         this._listenerIds  = [];
         this._connectorIds = [];
+        this._totalFlows   = 0;
+        this._currentFlows = 0;
 
         vanAddresses[vaddr] = this;
         this._fireWatches();
@@ -32,6 +34,9 @@ class VanAddress {
     _fireWatches() {
         let watchList = recordWatches['VAN_ADDRESS'] || [];
         watchList.forEach(watch => watch.invoke(this))
+
+        watchList = flowWatches[this._address] || [];
+        watchList.forEach(watch => watch.invoke(this));
     }
 
     addListenerId(id) {
@@ -44,6 +49,21 @@ class VanAddress {
         this._fireWatches();
     }
 
+    flowBegin() {
+        this._totalFlows   += 1;
+        this._currentFlows += 1;
+        this._fireWatches();
+    }
+
+    flowEnd() {
+        this._currentFlows -= 1;
+        this._fireWatches();
+    }
+
+    get address() {
+        return this._address;
+    }
+
     get listenerIds() {
         return this._listenerIds;
     }
@@ -54,10 +74,12 @@ class VanAddress {
 
     get obj() {
         let object = {};
-        object.rtype = 'VAN_ADDRESS';
-        object.id = this._address;
-        object.listenerCount = this._listenerIds.length;
+        object.rtype          = 'VAN_ADDRESS';
+        object.id             = this._address;
+        object.listenerCount  = this._listenerIds.length;
         object.connectorCount = this._connectorIds.length;
+        object.totalFlows     = this._totalFlows;
+        object.currentFlows   = this._currentFlows;
         return object;
     }
 }
@@ -69,12 +91,7 @@ class Record {
         this._record      = rec;
         this._children    = [];
         this._peerId      = undefined;
-
-        if (this.parent) {
-            if (this.parent in records) {
-                records[this.parent].addChild(this.id);
-            }
-        }
+        this._van_address = undefined;
 
         idsByType[this._rtype].push(this._id);
 
@@ -90,8 +107,11 @@ class Record {
             }
         }
 
-        let watches = recordWatches[rtype] || [];
-        watches.forEach(watch => watch.invoke(this));
+        if (this.parent) {
+            this._addParent();
+        }
+
+        this._fireWatches();
     }
 
     get id() {
@@ -121,6 +141,19 @@ class Record {
         return object;
     }
 
+    _addParent() {
+        if (this.parent in records) {
+            let parent = records[this.parent];
+            parent.addChild(this.id);
+            if (parent._van_address) {
+                this._van_address = parent._van_address;
+                if (this._rtype == 'FLOW') {
+                    this._van_address.flowBegin()
+                }
+            }
+        }
+    }
+
     _linkPeer() {
         let peerId = this.counterflow;
         if (peerId) {
@@ -147,6 +180,18 @@ class Record {
             } else {
                 vanAddr.addConnectorId(this._id);
             }
+
+            this._van_address = vanAddr;
+        }
+    }
+
+    _fireWatches() {
+        let watches = recordWatches[this._rtype] || [];
+        watches.forEach(watch => watch.invoke(this));
+
+        if (this._van_address) {
+            let watches = flowWatches[this._van_address.address] || [];
+            watches.forEach(watch => watch.invoke(this));
         }
     }
 
@@ -167,7 +212,7 @@ class Record {
         }
         
         if (!prevParent && this.parent) {
-            records[this.parent].addChild(this.id);
+            this._addParent(this.parent);
         }
 
         if ((this._rtype == "LISTENER" || this._rtype == "CONNECTOR") && !prevAddr) {
@@ -178,8 +223,11 @@ class Record {
             this._linkPeer();
         }
 
-        let watches = recordWatches[this._rtype] || [];
-        watches.forEach(watch => watch.invoke(this));
+        if (this._van_address && this._record.endTime) {
+            this._van_address.flowEnd();
+        }
+
+        this._fireWatches();
     }
 }
 
