@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: skupper-collector
-        image: docker.io/tedross/skupper-collector:latest
+        image: quay.io/skupper/skupper-collector:latest
         imagePullPolicy: Always
         volumeMounts:
         - mountPath: /etc/messaging/

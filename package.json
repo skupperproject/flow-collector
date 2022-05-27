@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ted-ross/flow-collector.git"
+    "url": "git+https://github.com/skupperproject/flow-collector.git"
   },
-  "author": "Ted Ross",
+  "author": "Skupper Authors",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/ted-ross/flow-collector/issues"
+    "url": "https://github.com/skupperproject/flow-collector/issues"
   },
-  "homepage": "https://github.com/ted-ross/flow-collector#readme",
+  "homepage": "https://github.com/skupperproject/flow-collector#readme",
   "dependencies": {
     "http": "^0.0.1-security",
     "rhea": "^3.0.0"
