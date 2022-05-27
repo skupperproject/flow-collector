@@ -141,6 +141,11 @@ Flow records are uni-directional which means that almost all protocol traffic wi
 |`latency`|The latency experienced for this flow.  For client-side flows (the parent is a listener), this is the latency experienced by the client.  For server-side flows (the parent is a connector), this is the latency of the actual server/pod handling the traffic.  The cross-network latency can be computed by finding the difference between the two latencies.|
 |`trace`|A list (separated by vertical bar characters) of the routers through which this traffic flowed.|
 
+---
+`api/v1alpha1/record?id=<record-id>[&id=<record-id]`
+
+This query returns a list containing the specific record(s) identified by the supplied record-id(s).  If multiple record-ids are supplied, multiple records shall be returned.  IDs that don't reference an exiting record shall be ignored.  The `watch` feature is not available for this query.
+
 ### Watch Queries
 
 A watch query is one in which the normal query response is sent to the requestor, but the connection is then held open so that any changes to the query set can be sent immediately.  The format of the reply is a single JSON list with the initial query response followed by individual JSON objects that represent changes to the records.
