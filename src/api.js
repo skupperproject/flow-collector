@@ -40,7 +40,24 @@ const parseArgs = function(text) {
         pairs.forEach(pair => {
             let sides = pair.split('=');
             if (sides.length == 2) {
-                result[sides[0]] = sides[1];
+                if (result[sides[0]] == undefined) {
+                    //
+                    // If this is the first instance of this key, put the key/value in the map
+                    //
+                    result[sides[0]] = sides[1];
+                } else if (Array.isArray(result[sides[0]])) {
+                    //
+                    // If the key is already an array, add the new value to the end of the array.
+                    //
+                    result[sides[0]].push(sides[1]);
+                } else {
+                    //
+                    // If the key is in the map, but the value is not an array,
+                    // convert it to an array with the original value and the new value.
+                    //
+                    let original = result[sides[0]];
+                    result[sides[0]] = [original, sides[1]];
+                }
             }
         });
     }
@@ -221,6 +238,23 @@ const getTopology = function(res, args) {
     }
 }
 
+const getRecord = function(res, args) {
+    let result  = [];
+    let records = data.GetRecords();
+    let ids     = Array.isArray(args.id) ? args.id : [args.id];
+
+    ids.forEach(id => {
+        let record = records[id];
+        if (record) {
+            result.push(record);
+        }
+    })
+
+    res.setHeader('Content-Type', 'application/json');
+    res.write(JSON.stringify(result));
+    res.end();
+}
+
 /**
  * Watch handler for the topology query.  This handler filters out outgoing links to match
  * the results of the original topology list.
@@ -276,6 +310,9 @@ const onRequest = function(req, res) {
                 return;
             } else if (path == 'topology') {
                 getTopology(res, args);
+                return;
+            } else if (path == 'record') {
+                getRecord(res, args);
                 return;
             }
         }
