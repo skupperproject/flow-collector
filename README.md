@@ -97,11 +97,11 @@ This query returns a list of `VAN_ADDRESS` records.  Each address represents a s
 
 |Attribute|Description|
 |----|----|
-|id|The service address.  Note that this is in a different form from most of the other record identifiers.|
-|listenerCount|The number of listeners for this address in the network.|
-|connectorCount|Ther number of connectors for this address in the network.  This corresponds to the number of server instances providing the service in question.|
-|totalFlows|The total number of flows that have used this address.|
-|currentFlows|The number of currently active flows using this address.|
+|`id`|The service address.  Note that this is in a different form from most of the other record identifiers.|
+|`listenerCount`|The number of listeners for this address in the network.|
+|`connectorCount`|Ther number of connectors for this address in the network.  This corresponds to the number of server instances providing the service in question.|
+|`totalFlows`|The total number of flows that have used this address.|
+|`currentFlows`|The number of currently active flows using this address.|
 
 ---
 `api/v1alpha1/flows?vanaddr=<address>`

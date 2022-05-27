@@ -19,6 +19,12 @@
 
 const record = require('./record.js');
 
+/**
+ * VanAddress
+ *
+ * Van addresses are not emitted as records from routers.  They are inferred from other data
+ * and stored by the collector in VanAddress objects.
+ */
 class VanAddress {
     constructor(vaddr) {
         this._address      = vaddr;
@@ -84,6 +90,11 @@ class VanAddress {
     }
 }
 
+/**
+ * Record
+ *
+ * This class holds records emitted by event sources in the network.
+ */
 class Record {
     constructor(rtype, id, rec) {
         this._rtype       = rtype;
@@ -93,24 +104,46 @@ class Record {
         this._peerId      = undefined;
         this._van_address = undefined;
 
+        //
+        // Store this record's identity in the by-type index.
+        //
         idsByType[this._rtype].push(this._id);
 
+        //
+        // If this record has a counter-flow attribute, create a mutual cross reference
+        // with the counter-flow record.
+        //
         this._linkPeer();
 
+        //
+        // If this is a LISTENER or CONNECTOR record, do inference regarding the van address
+        // of the record.  This includes possibly creating a new VanAddress object or changing
+        // metrics of an existing one.
+        //
         if (this._rtype == "LISTENER" || this._rtype == "CONNECTOR") {
             this._newVanAddress();
         }
 
+        //
+        // Normalize LINK names to contain the "0/" prefix if they don't already have it.
+        // This will allow for proper matching of the linked name to a ROUTER record.
+        //
         if (this._rtype == "LINK") {
             if (this._record['name'] && this._record['name'][0] != '0') {
                 this._record['name'] = "0/" + this._record['name'];
             }
         }
 
+        //
+        // If this record has a parent reference, set up the parent-child linkage.
+        //
         if (this.parent) {
             this._addParent();
         }
 
+        //
+        // If there are any watches relevant to this record, invoke them now.
+        //
         this._fireWatches();
     }
 
