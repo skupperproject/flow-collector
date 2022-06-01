@@ -246,7 +246,7 @@ const getRecord = function(res, args) {
     ids.forEach(id => {
         let record = records[id];
         if (record) {
-            result.push(record);
+            result.push(record._record);
         }
     })
 
