@@ -22,7 +22,7 @@ const URL  = require('url');
 const data = require('./data.js');
 
 const SERVER_PORT = 8010;
-
+const USE_CORS = process.env.USE_CORS
 
 const traverseDepthFirst = function(record, result) {
     result.push(record.obj);
@@ -90,6 +90,12 @@ const getVanAddrs = function(res, args) {
     }
 
     res.setHeader('Content-Type', 'application/json');
+
+    if (USE_CORS === 'yes') {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE')
+    }
+
     res.write(JSON.stringify(result));
     if (argsWatch(args)) {
         let watch = data.WatchRecord('VAN_ADDRESS', onRecordWatch, res);
@@ -115,6 +121,11 @@ const getVanAddrs = function(res, args) {
  */
 const getFlows = function(res, args) {
     res.setHeader('Content-Type', 'application/json');
+
+    if (USE_CORS === 'yes') {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE')
+    }
 
     if (!args.vanaddr) {
         badRequest(res, 'vanaddr argument missing');
@@ -173,6 +184,12 @@ const getRecordType = function(res, rType, args) {
     // Send the JSON representation of the result.
     //
     res.setHeader('Content-Type', 'application/json');
+
+    if (USE_CORS === 'yes') {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE')
+    }
+
     res.write(JSON.stringify(result));
     if (argsWatch(args)) {
         let watch = data.WatchRecord(rType, onRecordWatch, res);
@@ -224,6 +241,12 @@ const getTopology = function(res, args) {
     // Send the JSON representation of the result.
     //
     res.setHeader('Content-Type', 'application/json');
+
+    if (USE_CORS === 'yes') {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE')
+    }
+    
     res.write(JSON.stringify(result));
     if (argsWatch(args)) {
         let routerWatch = data.WatchRecord('ROUTER', onTopologyWatch, res);
