@@ -24,6 +24,20 @@ const data = require('./data.js');
 const SERVER_PORT = 8010;
 const USE_CORS = process.env.USE_CORS
 
+const getHeaders = (props = {}) => {
+    const headers = {...props, 'Content-Type': 'application/json'}
+
+    if (USE_CORS === 'yes') {
+        return {
+            ...headers, 
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, PATCH, DELETE'
+        }
+    }
+
+    return headers
+}
+
 const traverseDepthFirst = function(record, result) {
     result.push(record.obj);
     record.children.forEach(child => {
@@ -89,13 +103,7 @@ const getVanAddrs = function(res, args) {
         result.push(value.obj);
     }
 
-    res.setHeader('Content-Type', 'application/json');
-
-    if (USE_CORS === 'yes') {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE')
-    }
-
+    res.writeHead(200, getHeaders());
     res.write(JSON.stringify(result));
     if (argsWatch(args)) {
         let watch = data.WatchRecord('VAN_ADDRESS', onRecordWatch, res);
@@ -120,12 +128,7 @@ const getVanAddrs = function(res, args) {
  * @param {*} args Arguments supplied with the GET query
  */
 const getFlows = function(res, args) {
-    res.setHeader('Content-Type', 'application/json');
-
-    if (USE_CORS === 'yes') {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE')
-    }
+    res.writeHead(200, getHeaders());
 
     if (!args.vanaddr) {
         badRequest(res, 'vanaddr argument missing');
@@ -183,13 +186,7 @@ const getRecordType = function(res, rType, args) {
     //
     // Send the JSON representation of the result.
     //
-    res.setHeader('Content-Type', 'application/json');
-
-    if (USE_CORS === 'yes') {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE')
-    }
-
+    res.writeHead(200, getHeaders());
     res.write(JSON.stringify(result));
     if (argsWatch(args)) {
         let watch = data.WatchRecord(rType, onRecordWatch, res);
@@ -240,13 +237,7 @@ const getTopology = function(res, args) {
     //
     // Send the JSON representation of the result.
     //
-    res.setHeader('Content-Type', 'application/json');
-
-    if (USE_CORS === 'yes') {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE')
-    }
-    
+    res.writeHead(200, getHeaders());
     res.write(JSON.stringify(result));
     if (argsWatch(args)) {
         let routerWatch = data.WatchRecord('ROUTER', onTopologyWatch, res);
@@ -273,7 +264,7 @@ const getRecord = function(res, args) {
         }
     })
 
-    res.setHeader('Content-Type', 'application/json');
+    res.writeHead(200, getHeaders());
     res.write(JSON.stringify(result));
     res.end();
 }

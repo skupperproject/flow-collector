@@ -4,6 +4,8 @@ metadata:
   name: skupper-collector
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       application: skupper-collector
