@@ -25,8 +25,9 @@ amqp.options.enable_sasl_external = true;
 
 var connection;
 var beaconReceiver;
+var anonSender;
 var connectedHandlers = [];
-var routers           = {};  // address => receiver
+var sources           = {};  // address => receiver
 var connected         = false;
 
 exports.Start = function() {
@@ -34,15 +35,24 @@ exports.Start = function() {
     return new Promise((resolve, reject) => {
         connection = amqp.connect();
         beaconReceiver = connection.open_receiver('mc/sfe.all');
+        anonSender     = connection.open_sender();
         resolve();
     });
 }
 
 
-const onRouterBeacon = function(ap) {
-    if (!routers[ap.address]) {
-        console.log(`New router detected at address ${ap.address}`);
-        routers[ap.address] = connection.open_receiver(ap.address);
+const onSourceBeacon = function(ap) {
+    if (!sources[ap.address]) {
+        console.log(`New ${ap.sourceType} detected at address ${ap.address}`);
+        sources[ap.address] = connection.open_receiver(ap.address);
+        if (ap.direct) {
+            console.log(`Sending FLUSH to ${ap.direct}`);
+            anonSender.send({
+                to      : ap.direct,
+                subject : 'FLUSH',
+                body    : '',
+            });
+        }
     }
 }
 
@@ -54,8 +64,8 @@ const onCollectorBeacon = function(ap) {
 
 const onBeacon = function(context) {
     let ap = context.message.application_properties;
-    if (ap.v == 1 && ap.sourceType == 'ROUTER') {
-        onRouterBeacon(ap);
+    if (ap.v == 1 && (ap.sourceType == 'ROUTER' || ap.sourceType == 'CONTROLLER')) {
+        onSourceBeacon(ap);
     }
     if (ap.v == 1 && ap.sourceType == 'COLLECTOR') {
         onCollectorBeacon(ap);

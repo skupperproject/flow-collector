@@ -26,8 +26,10 @@ const recordTypes = [
     "CONNECTOR",
     "FLOW",
     "PROCESS",
+    "IMAGE",
     "INGRESS",
     "EGRESS",
+    "COLLECTOR",
 ];
 
 const attributes = [

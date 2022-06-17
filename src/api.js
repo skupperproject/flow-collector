@@ -308,6 +308,12 @@ const onRequest = function(req, res) {
             } else if (path == 'connectors') {
                 getRecordType(res, 'CONNECTOR', args);
                 return;
+            } else if (path == 'processes') {
+                getRecordType(res, 'PROCESS', args);
+                return;
+            } else if (path == 'sites') {
+                getRecordType(res, 'SITE', args);
+                return;
             } else if (path == 'topology') {
                 getTopology(res, args);
                 return;
