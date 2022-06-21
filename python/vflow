@@ -34,7 +34,7 @@ class Record(object):
         self.attributes = _map
 
     def __getattr__(self, __name):
-        return self.attributes[__name]
+        return self.attributes.get(__name, "")
 
 
 
@@ -71,7 +71,7 @@ class BusManager:
 
         for addr in records:
             row = []
-            row.append(addr.id)
+            row.append(addr.name)
             row.append(addr.connectorCount)
             row.append(addr.totalFlows)
             row.append(addr.currentFlows)
@@ -84,6 +84,31 @@ class BusManager:
     def displayAddressSummary(self, address):
         pass
 
+    def displaySites(self):
+        disp = Display(prefix="  ")
+        heads = []
+        heads.append(Header("site"))
+        heads.append(Header("namespace"))
+        heads.append(Header("location"))
+        heads.append(Header("provider"))
+        heads.append(Header("platform"))
+
+        rows = []
+        records = self.query("/sites")
+
+        for site in records:
+            row = []
+            row.append(site.name)
+            row.append(site.namespace)
+            row.append(site.location)
+            row.append(site.provider)
+            row.append(site.platform)
+            rows.append(row)
+        title = "Network Sites"
+        sorter = Sorter(heads, rows, 'site', 0, True)
+        dispRows = sorter.getSorted()
+        disp.formattedTable(title, heads, dispRows)
+
 def run(argv):
     bm = BusManager(argv[1:])
     try:
@@ -91,6 +116,8 @@ def run(argv):
             bm.displayAddresses()
         elif len(argv) == 3 and argv[1] == '-a':
             bm.displayAddressSummary(argv[2])
+        elif len(argv) == 2 and argv[1] == '-s':
+            bm.displaySites()
     finally:
         bm.close()
 

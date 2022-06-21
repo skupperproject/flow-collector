@@ -82,6 +82,7 @@ class VanAddress {
         let object = {};
         object.rtype          = 'VAN_ADDRESS';
         object.id             = this._address;
+        object.name           = this._address;
         object.listenerCount  = this._listenerIds.length;
         object.connectorCount = this._connectorIds.length;
         object.totalFlows     = this._totalFlows;
@@ -100,7 +101,7 @@ class Record {
         this._rtype       = rtype;
         this._id          = id;
         this._record      = rec;
-        this._children    = [];
+        this._children    = [];         // List of records IDs
         this._peerId      = undefined;
         this._van_address = undefined;
 
@@ -122,6 +123,18 @@ class Record {
         //
         if (this._rtype == "LISTENER" || this._rtype == "CONNECTOR") {
             this._newVanAddress();
+        }
+
+        //
+        // If this is a record type that participates in process linkage, queue it up in the
+        // to-be-reconciled list.
+        //
+        if (this._rtype == "CONNECTOR") {
+            toBeProcessReconciled.connectors.push(this._id);
+        } else if (this._rtype == "PROCESS") {
+            toBeProcessReconciled.processes.push(this._id);
+        } else if (this._rtype == "FLOW") {
+            toBeProcessReconciled.flows.push(this._id);
         }
 
         //
@@ -151,8 +164,16 @@ class Record {
         return this._id;
     }
 
+    get rtype() {
+        return this._rtype;
+    }
+
     get parent() {
         return this._record[record.PARENT_INDEX];
+    }
+
+    get childIds() {
+        return this._children;
     }
 
     get children() {
@@ -172,6 +193,10 @@ class Record {
         object.rtype = this._rtype;
         object.id    = this.id;
         return object;
+    }
+
+    attribute(attr) {
+        return this._record[attr];
     }
 
     _addParent() {
@@ -276,6 +301,77 @@ class Watch {
 }
 
 //
+// Reconcile process linkage for the newly created or updated ID.
+//
+const reconcileProcessLinkage = function(id) {
+    let record = records[id];
+    if (record.rtype == "CONNECTOR") {
+        //
+        // Connector - If the connector is pending reconciliation and the connector's destination host 
+        // has a process record associated with it, create the linkage and remove the connector from the
+        // reconciliation list.
+        //
+        if (toBeProcessReconciled.connectors.indexOf(id) > -1) {
+            let processIp = record.attribute("destHost");
+            if (processIp && processIps[processIp]) {
+                toBeProcessReconciled.connectors.splice(toBeProcessReconciled.connectors.indexOf(id), 1);
+                record.update({
+                    process : processIps[processIp],
+                });
+
+                //
+                // Recursively reconcile all FLOW records that are children of this CONNECTOR
+                //
+                record.childIds.forEach(childId => reconcileProcessLinkage(childId));
+            }
+        }
+    } else if (record.rtype == "PROCESS") {
+        //
+        // Process - If the process is pending reconciliation and the process has a SOURCE_HOST,
+        // store (or overwrite) the record in the processIps index.
+        //
+        if (toBeProcessReconciled.processes.indexOf(id) > -1 && record.attribute("sourceHost")) {
+            let ip = record.attribute("sourceHost");
+            processIps[ip] = id;
+            toBeProcessReconciled.processes.splice(toBeProcessReconciled.processes.indexOf(id), 1);
+
+            //
+            // Recursively reconcile all CONNECTOR and FLOW records awaiting reconciliation.
+            //
+            toBeProcessReconciled.connectors.forEach(id => reconcileProcessLinkage(id));
+            toBeProcessReconciled.flows.forEach(id => reconcileProcessLinkage(id));
+        }
+    } else if (record.rtype == "FLOW") {
+        //
+        // Flows - If the flow is a child of a connector, and the connector has a processes link,
+        // copy the link and be done.  If the flow is a child of a listener and the sourceHost of
+        // the flow is found in the processIps, create the linkage.
+        //
+        let parent = records[record.parent];
+        if (parent) {
+            if (parent.rtype == "CONNECTOR") {
+                if (parent.attribute('process')) {
+                    toBeProcessReconciled.flows.splice(toBeProcessReconciled.flows.indexOf(id), 1);
+                    record.update({
+                        process : parent.attribute("process"),
+                    });
+                }
+            } else if (parent.rtype == "LISTENER") {
+                let ip = record.attribute("sourceHost");
+                if (ip && ip in processIps) {
+                    toBeProcessReconciled.flows.splice(toBeProcessReconciled.flows.indexOf(id), 1);
+                    record.update({
+                        process : processIps[ip],
+                    });
+                }
+            } else {
+                toBeProcessReconciled.flows.splice(toBeProcessReconciled.flows.indexOf(id), 1);
+            }
+        }
+    }
+}
+
+//
 // records - All accumulated records keyed by their identities.
 //
 var records = {};
@@ -319,6 +415,20 @@ var recordWatches = {
 };
 
 //
+// Process IP addresses - { ipAddress => id of process record }
+//
+var processIps = {};
+
+//
+// Lists of records that possibly require process-linkage-reconciliation
+//
+var toBeProcessReconciled = {
+    connectors : [],
+    processes  : [],
+    flows      : [],
+}
+
+//
 // Flow watches - { vanAddr => [Watch] }
 //
 var flowWatches = {};
@@ -330,6 +440,7 @@ exports.IncomingRecord = function(rtype, id, record) {
     } else {
         records[id].update(record);
     }
+    reconcileProcessLinkage(id);
 }
 
 exports.GetRecords = function() {

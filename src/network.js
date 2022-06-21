@@ -29,6 +29,7 @@ var anonSender;
 var connectedHandlers = [];
 var sources           = {};  // address => receiver
 var connected         = false;
+var flushAddresses    = [];
 
 exports.Start = function() {
     console.log("[Beacon detector module starting]");
@@ -41,17 +42,24 @@ exports.Start = function() {
 }
 
 
+const sendFlush = function() {
+    let address = flushAddresses.splice(0,1)[0];
+    console.log(`Sending FLUSH to ${address}`);
+    anonSender.send({
+        to      : address,
+        subject : 'FLUSH',
+        body    : '',
+    });
+}
+
+
 const onSourceBeacon = function(ap) {
     if (!sources[ap.address]) {
         console.log(`New ${ap.sourceType} detected at address ${ap.address}`);
         sources[ap.address] = connection.open_receiver(ap.address);
         if (ap.direct) {
-            console.log(`Sending FLUSH to ${ap.direct}`);
-            anonSender.send({
-                to      : ap.direct,
-                subject : 'FLUSH',
-                body    : '',
-            });
+            flushAddresses.push(ap.direct);
+            setTimeout(sendFlush, 5000);
         }
     }
 }
