@@ -31,10 +31,20 @@ class Record(object):
     '''
     '''
     def __init__(self, _map):
-        self.attributes = _map
+        self.attributes  = _map
+        self.annotations = {}
 
     def __getattr__(self, __name):
-        return self.attributes.get(__name, "")
+        return self.attributes.get(__name, self.annotations.get(__name, None))
+
+    def __repr__(self):
+        str = "%s(%s)" % (self.rtype, self.id)
+        if self.name:
+            str += "[%s]" % self.name
+        return str
+
+    def annotate(self, key, value):
+        self.annotations[key] = value
 
 
 
@@ -82,7 +92,48 @@ class BusManager:
         disp.formattedTable(title, heads, dispRows)
 
     def displayAddressSummary(self, address):
-        pass
+        records    = self.query('/flows?vanaddr=' + address)
+        listeners  = {}
+        connectors = {}
+        flows      = []
+        processIds = []
+        processes  = {}
+        siteIds    = []
+        sites      = {}
+        for record in records:
+            if record.rtype == 'LISTENER':
+                listeners[record.id] = record
+            elif record.rtype == 'CONNECTOR':
+                connectors[record.id] = record
+            elif record.rtype == 'FLOW':
+                flows.append(record)
+            if record.process and record.process not in processIds:
+                processIds.append(record.process)
+
+        if len(processIds) > 0:
+            ids = ""
+            for id in processIds:
+                ids += "id=%s&" % id
+            records = self.query('/record?' + ids[:-1])
+            for record in records:
+                processes[record.id] = record
+                if record.parent and record.parent not in siteIds:
+                    siteIds.append(record.parent)
+
+        if len(siteIds) > 0:
+            ids = ""
+            for id in siteIds:
+                ids += "id=%s&" % id
+            records = self.query('/record?' + ids[:-1])
+            for record in records:
+                sites[record.id] = record
+        
+        print(flows)
+        print(listeners)
+        print(connectors)
+        print(processes)
+        print(sites)
+
 
     def displaySites(self):
         disp = Display(prefix="  ")
