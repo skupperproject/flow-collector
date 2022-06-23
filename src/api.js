@@ -166,8 +166,8 @@ const getRecordType = function(res, rType, args) {
     //
     // Find all of the top-level records (that have no parent).
     //
-    let linkIds = data.GetIdByType(rType);
-    linkIds.forEach(id => result.push(records[id].obj));
+    let recordIds = data.GetIdByType(rType);
+    recordIds.forEach(id => result.push(records[id].obj));
 
     //
     // Send the JSON representation of the result.
