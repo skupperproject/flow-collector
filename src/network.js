@@ -35,8 +35,11 @@ exports.Start = function() {
     console.log("[Beacon detector module starting]");
     return new Promise((resolve, reject) => {
         connection = amqp.connect();
-        beaconReceiver = connection.open_receiver('mc/sfe.all');
-        anonSender     = connection.open_sender();
+        beaconReceiver = connection.open_receiver({
+            source          : 'mc/sfe.all',
+            rcv_settle_mode : 0,
+        });
+        anonSender = connection.open_sender();
         resolve();
     });
 }
@@ -56,7 +59,10 @@ const sendFlush = function() {
 const onSourceBeacon = function(ap) {
     if (!sources[ap.address]) {
         console.log(`New ${ap.sourceType} detected at address ${ap.address}`);
-        sources[ap.address] = connection.open_receiver(ap.address);
+        sources[ap.address] = connection.open_receiver({
+            source          : ap.address,
+            rcv_settle_mode : 0,
+        });
         if (ap.direct) {
             flushAddresses.push(ap.direct);
             setTimeout(sendFlush, 5000);

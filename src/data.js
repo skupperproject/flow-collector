@@ -98,12 +98,13 @@ class VanAddress {
  */
 class Record {
     constructor(rtype, id, rec) {
-        this._rtype       = rtype;
-        this._id          = id;
-        this._record      = rec;
-        this._children    = [];         // List of records IDs
-        this._peerId      = undefined;
-        this._van_address = undefined;
+        this._rtype        = rtype;
+        this._id           = id;
+        this._record       = rec;
+        this._children     = [];         // List of records IDs
+        this._peerId       = undefined;
+        this._van_address  = undefined;
+        this._parentLinked = false;
 
         //
         // Store this record's identity in the by-type index.
@@ -123,6 +124,10 @@ class Record {
         //
         if (this._rtype == "LISTENER" || this._rtype == "CONNECTOR") {
             this._newVanAddress();
+        }
+
+        if (this._van_address && this._record.endTime) {
+            this._van_address.flowEnd();
         }
 
         //
@@ -184,7 +189,7 @@ class Record {
         return childObjects;
     }
 
-    get counterflow() {
+    get counterflowId() {
         return this._record[record.COUNTERFLOW_INDEX];
     }
 
@@ -203,6 +208,7 @@ class Record {
         if (this.parent in records) {
             let parent = records[this.parent];
             parent.addChild(this.id);
+            this._parentLinked = true;
             if (parent._van_address) {
                 this._van_address = parent._van_address;
                 if (this._rtype == 'FLOW') {
@@ -213,7 +219,7 @@ class Record {
     }
 
     _linkPeer() {
-        let peerId = this.counterflow;
+        let peerId = this.counterflowId;
         if (peerId) {
             let peerRecord = records[peerId];
             if (peerRecord) {
@@ -258,18 +264,13 @@ class Record {
     }
 
     update(rec) {
-        let prevParent = this.parent;
-        let prevAddr   = this._record[record.VAN_ADDRESS_INDEX];
-        let checkPeer  = false;
+        let prevAddr = this._record[record.VAN_ADDRESS_INDEX];
         
         for (const [key, value] of Object.entries(rec)) {
             this._record[key] = value;
-            if (key == record.COUNTERFLOW_INDEX) {
-                checkPeer = true;
-            }
         }
         
-        if (!prevParent && this.parent) {
+        if (!!this.parent && !this._parentLinked) {
             this._addParent(this.parent);
         }
 
@@ -277,7 +278,7 @@ class Record {
             this._newVanAddress();
         }
 
-        if (checkPeer && !this._peerId) {
+        if (this._rtype == 'FLOW' && !this._peerId) {
             this._linkPeer();
         }
 
@@ -436,6 +437,7 @@ var flowWatches = {};
 
 exports.IncomingRecord = function(rtype, id, record) {
     if (!records[id]) {
+        //console.log(`Incoming New Record ${rtype}/${id}`);
         records[id] = new Record(rtype, id, record);
     } else {
         records[id].update(record);
