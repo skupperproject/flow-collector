@@ -92,21 +92,28 @@ class BusManager:
         disp.formattedTable(title, heads, dispRows)
 
     def displayAddressSummary(self, address):
-        records    = self.query('/flows?vanaddr=' + address)
         listeners  = {}
         connectors = {}
-        flows      = []
+        flows      = {}
         processIds = []
         processes  = {}
         siteIds    = []
         sites      = {}
+        routerIds  = []
+        routers    = {}
+
+        records = self.query('/flows?vanaddr=' + address)
         for record in records:
             if record.rtype == 'LISTENER':
                 listeners[record.id] = record
+                if record.parent and record.parent not in routerIds:
+                    routerIds.append(record.parent)
             elif record.rtype == 'CONNECTOR':
                 connectors[record.id] = record
+                if record.parent and record.parent not in routerIds:
+                    routerIds.append(record.parent)
             elif record.rtype == 'FLOW':
-                flows.append(record)
+                flows[record.id] = record
             if record.process and record.process not in processIds:
                 processIds.append(record.process)
 
@@ -120,6 +127,16 @@ class BusManager:
                 if record.parent and record.parent not in siteIds:
                     siteIds.append(record.parent)
 
+        if len(routerIds) > 0:
+            ids = ""
+            for id in routerIds:
+                ids += "id=%s&" % id
+            records = self.query('/record?' + ids[:-1])
+            for record in records:
+                routers[record.id] = record
+                if record.parent and record.parent not in siteIds:
+                    siteIds.append(record.parent)
+
         if len(siteIds) > 0:
             ids = ""
             for id in siteIds:
@@ -127,12 +144,71 @@ class BusManager:
             records = self.query('/record?' + ids[:-1])
             for record in records:
                 sites[record.id] = record
-        
-        print(flows)
-        print(listeners)
-        print(connectors)
-        print(processes)
-        print(sites)
+
+        flowPairs = []
+        for flow in flows.values():
+            if flow.parent in listeners:
+                if listeners[flow.parent].parent and routers[listeners[flow.parent].parent].parent:
+                    flow.annotate('siteName', sites[routers[listeners[flow.parent].parent].parent].name)
+                elif flow.process and processes[flow.process].parent:
+                    flow.annotate('siteName', sites[processes[flow.process].parent].name)
+                flow.annotate('protocol', listeners[flow.parent].protocol)
+            elif flow.parent in connectors:
+                if flow.counterflow not in flows:
+                    print("Dangling counterflow: %s" % flow.counterflow)
+                flowPairs.append((flows[flow.counterflow] if flow.counterflow in flows else None, flow))
+                if connectors[flow.parent].parent and routers[connectors[flow.parent].parent].parent:
+                    flow.annotate('siteName', sites[routers[connectors[flow.parent].parent].parent].name)
+                elif flow.process and processes[flow.process].parent:
+                    flow.annotate('siteName', sites[processes[flow.process].parent].name)
+                if not flow.process:
+                    flow.annotate('destHost', connectors[flow.parent].destHost)
+
+        disp = Display(prefix="  ")
+        heads = []
+        heads.append(Header("addr"))
+        heads.append(Header("proto"))
+        heads.append(Header("c.site"))
+        heads.append(Header("c.proc"))
+        heads.append(Header("c.port"))
+        heads.append(Header("c.oct"))
+        heads.append(Header("c.rate"))
+        heads.append(Header("c.uack"))
+        heads.append(Header("c.stal"))
+        heads.append(Header("c.lat"))
+        heads.append(Header("s.oct"))
+        heads.append(Header("s.rate"))
+        heads.append(Header("s.uack"))
+        heads.append(Header("c.stal"))
+        heads.append(Header("s.lat"))
+        heads.append(Header("s.proc"))
+        heads.append(Header("s.port"))
+        heads.append(Header("s.site"))
+
+        rows = []
+        for pair in flowPairs:
+            row = []
+            row.append(address)
+            row.append(pair[0].protocol if pair[0] else '-')
+            row.append(pair[0].siteName if pair[0] else '-')
+            row.append((processes[pair[0].process].name if pair[0].process else pair[0].sourceHost) if pair[0] else '-')
+            row.append(pair[0].sourcePort if pair[0] else '-')
+            row.append(pair[0].octets if pair[0] else '-')
+            row.append(pair[0].octetRate if pair[0] else '-')
+            row.append(pair[0].octetsUnacked if pair[0] else '-')
+            row.append(pair[0].windowClosures if pair[0] else '-')
+            row.append(pair[0].latency if pair[0] else '-')
+            row.append(pair[1].octets if pair[1] else '-')
+            row.append(pair[1].octetRate if pair[1] else '-')
+            row.append(pair[1].octetsUnacked if pair[1] else '-')
+            row.append(pair[1].windowClosures if pair[1] else '-')
+            row.append(pair[1].latency if pair[1] else '-')
+            row.append((processes[pair[1].process].name if pair[1].process else pair[1].destHost) if pair[1] else '-')
+            row.append(connectors[pair[1].parent].destPort if pair[1] else '-')
+            row.append(pair[1].siteName if pair[1] else '-')
+            rows.append(row)
+        title = "Flows for address %s" % address
+        disp.formattedTable(title, heads, rows)
 
 
     def displaySites(self):

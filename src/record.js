@@ -68,18 +68,11 @@ const attributes = [
     "buildVersion",
     "linkCost",
     "direction",
-    "resource",
-];
-
-const refAttributes = [false, true,  true,  false,
-                       false, true,  true,  false,
-                       false, false, false, false,
-                       false, false, false, false,
-                       false, false, false, false,
-                       false, false, false, false,
-                       false, false, false, false,
-                       false, false, false, false,
-                       false, false, false, false,
+    "octetRate",
+    "octetsOut",
+    "octetsUnacked",
+    "windowClosures",
+    "windowSize",
 ];
 
 exports.PARENT_INDEX      = "parent";
@@ -90,8 +83,6 @@ exports.VAN_ADDRESS_INDEX = "vanAddress";
 const adjustValue = function(value, key) {
     if (key == 0) {
         return recordTypes[value];
-    } else if (refAttributes[key]) {
-        return `${value[0]}:${value[1]}:${value[2]}`;
     } else {
         return value;
     }
