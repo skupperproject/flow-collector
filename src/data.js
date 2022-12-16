@@ -19,6 +19,14 @@
 
 const record = require('./record.js');
 
+var next_identifier = 0;
+
+const local_identifier = function() {
+    let text = `col:${next_identifier}`;
+    next_identifier += 1;
+    return text;
+}
+
 /**
  * VanAddress
  *
@@ -27,6 +35,7 @@ const record = require('./record.js');
  */
 class VanAddress {
     constructor(vaddr) {
+        this._identity     = local_identifier();
         this._address      = vaddr;
         this._listenerIds  = [];
         this._connectorIds = [];
@@ -80,8 +89,8 @@ class VanAddress {
 
     get obj() {
         let object = {};
-        object.rtype          = 'VAN_ADDRESS';
-        object.id             = this._address;
+        object.recordType     = 'VAN_ADDRESS';
+        object.identity       = this._identity;
         object.name           = this._address;
         object.listenerCount  = this._listenerIds.length;
         object.connectorCount = this._connectorIds.length;
@@ -105,6 +114,7 @@ class Record {
         this._peerId       = undefined;
         this._van_address  = undefined;
         this._parentLinked = false;
+        this._timeoffset   = undefined;
 
         //
         // Store this record's identity in the by-type index.
@@ -127,6 +137,7 @@ class Record {
         }
 
         if (this._van_address && this._record.endTime) {
+            this._van_address.flowBegin();
             this._van_address.flowEnd();
         }
 
@@ -193,11 +204,36 @@ class Record {
         return this._record[record.COUNTERFLOW_INDEX];
     }
 
+    get timeOffset() {
+        return this._timeoffset;
+    }
+
     get obj() {
         let object = this._record;
-        object.rtype = this._rtype;
-        object.id    = this.id;
+        object.recordType = this._rtype;
+        object.identity   = this.id;
+        if (object.endTime) {
+            object.duration = object.endTime - object.startTime;
+        } else {
+            let ancestor = this;
+            let now      = undefined;
+            while (ancestor && !now) {
+                if (ancestor.timeOffset) {
+                    now = (Date.now() * 1000) + ancestor.timeOffset;
+                    break;
+                }
+                let aid = ancestor.parent;
+                ancestor = aid ? records[aid] : undefined;
+            }
+            if (now) {
+                object.duration = now - object.startTime;
+            }
+        }
         return object;
+    }
+
+    setTime(timestamp) {
+        this._timeoffset = (Date.now() * 1000) - timestamp;
     }
 
     attribute(attr) {
@@ -331,7 +367,7 @@ const reconcileProcessLinkage = function(id) {
         // Process - If the process is pending reconciliation and the process has a SOURCE_HOST,
         // store (or overwrite) the record in the processIps index.
         //
-        if (toBeProcessReconciled.processes.indexOf(id) > -1 && record.attribute("sourceHost")) {
+        if (toBeProcessReconciled.processes.indexOf(id) > -1 && record.attribute("sourceHost") && record.attribute("imageName")) {
             let ip = record.attribute("sourceHost");
             processIps[ip] = id;
             toBeProcessReconciled.processes.splice(toBeProcessReconciled.processes.indexOf(id), 1);
@@ -341,7 +377,26 @@ const reconcileProcessLinkage = function(id) {
             //
             toBeProcessReconciled.connectors.forEach(id => reconcileProcessLinkage(id));
             toBeProcessReconciled.flows.forEach(id => reconcileProcessLinkage(id));
-        }
+
+            //
+            // Infer the image record and set up the linkage
+            //
+            let iname = record.attribute("imageName");
+            let iid   = images[iname];
+
+            if (iid == undefined) {
+                iid = local_identifier();
+                let irecord = new Record('IMAGE', iid, {
+                    name : iname,
+                });
+                images[iname] = iid;
+                records[iid] = irecord;
+            }
+
+            records[id].update({
+                image : iid,
+            });
+    }
     } else if (record.rtype == "FLOW") {
         //
         // Flows - If the flow is a child of a connector, and the connector has a processes link,
@@ -389,14 +444,20 @@ var idsByType = {
     'CONNECTOR'  : [],
     'FLOW'       : [],
     'PROCESS'    : [],
+    'IMAGE'      : [],
     'INGRESS'    : [],
     'EGRESS'     : [],
 };
 
 //
-// vanAddresses - { vanAddress => VanAddress object}
+// vanAddresses - { vanAddress => VanAddress object }
 //
 var vanAddresses = {};
+
+//
+// images - { imageName => objectId }
+//
+var images = {};
 
 //
 // Record-Type watches - { recordType => [Watch] }
@@ -410,6 +471,7 @@ var recordWatches = {
     'CONNECTOR'   : [],
     'FLOW'        : [],
     'PROCESS'     : [],
+    'IMAMGE'      : [],
     'INGRESS'     : [],
     'EGRESS'      : [],
     'VAN_ADDRESS' : [],
@@ -482,4 +544,10 @@ exports.WatchFlows = function(vanaddr, onUpdate, arg1) {
 exports.UnwatchFlows = function(vanaddr, watch) {
     flowWatches[vanaddr] = flowWatches[vanaddr].filter(w => w != watch);
     console.log(`Flow watch cancelled for vanaddr ${vanaddr}`);
+}
+
+exports.SourceTimestamp = function(id, timestamp) {
+    if (records[id]) {
+        records[id].setTime(timestamp);
+    }
 }

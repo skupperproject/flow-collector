@@ -38,11 +38,13 @@ const getHeaders = (props = {}) => {
     return headers
 }
 
-const traverseDepthFirst = function(record, result) {
-    result.push(record.obj);
-    record.children.forEach(child => {
-        traverseDepthFirst(child, result);
-    });
+const traverseDepthFirst = function(record, result, args) {
+    if (argsIncludeDeleted(args) || record.obj.endTime == undefined) {
+        result.push(record.obj);
+        record.children.forEach(child => {
+            traverseDepthFirst(child, result, args);
+        });
+    }
 }
 
 
@@ -142,13 +144,13 @@ const getFlows = function(res, args) {
         vaddr.listenerIds.forEach(id => {
             let listener = data.GetRecords()[id];
             if (listener) {
-                traverseDepthFirst(listener, result);
+                traverseDepthFirst(listener, result, args);
             }
         });
         vaddr.connectorIds.forEach(id => {
             let connector = data.GetRecords()[id];
             if (connector) {
-                traverseDepthFirst(connector, result);
+                traverseDepthFirst(connector, result, args);
             }
         });
     }
@@ -259,7 +261,7 @@ const getRecord = function(res, args) {
 
     ids.forEach(id => {
         let record = records[id];
-        if (record) {
+        if (record && (argsIncludeDeleted(args) || record.obj.endTime == undefined)) {
             result.push(record.obj);
         }
     })
@@ -304,7 +306,7 @@ const onRequest = function(req, res) {
     if (req.method == 'GET') {
         if (path.substring(0,14) == '/api/v1alpha1/') {
             path = path.substring(14)
-            if (path == 'vanaddrs') {
+            if (path == 'addresses') {
                 getVanAddrs(res, args);
                 return;
             } else if (path == 'flows') {
@@ -324,6 +326,9 @@ const onRequest = function(req, res) {
                 return;
             } else if (path == 'processes') {
                 getRecordType(res, 'PROCESS', args);
+                return;
+            } else if (path == 'images') {
+                getRecordType(res, 'IMAGE', args);
                 return;
             } else if (path == 'sites') {
                 getRecordType(res, 'SITE', args);
