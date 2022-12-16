@@ -57,9 +57,9 @@ const sendFlush = function() {
 
 
 const onSourceBeacon = function(ap) {
-    if (!sources[ap.address]) {
-        console.log(`New ${ap.sourceType} detected at address ${ap.address}`);
-        sources[ap.address] = connection.open_receiver({
+    if (!sources[ap.id]) {
+        console.log(`New ${ap.sourceType} detected: ${ap.id}`);
+        sources[ap.id] = connection.open_receiver({
             source          : ap.address,
             rcv_settle_mode : 0,
         });
@@ -72,7 +72,7 @@ const onSourceBeacon = function(ap) {
 
 
 const onCollectorBeacon = function(ap) {
-    console.log(`CONSOLE beacon for address: ${ap.address}`);
+    console.log(`CONSOLE beacon for id: ${ap.id}`);
 }
 
 
@@ -83,6 +83,13 @@ const onBeacon = function(context) {
     }
     if (ap.v == 1 && ap.sourceType == 'COLLECTOR') {
         onCollectorBeacon(ap);
+    }
+}
+
+const onHeartbeat = function(context) {
+    let ap = context.message.application_properties;
+    if (ap.id && ap.now) {
+        data.SourceTimestamp(ap.id, ap.now);
     }
 }
 
@@ -106,6 +113,8 @@ amqp.on('disconnected', function(context) {
 amqp.on('message', function(context) {
     if (context.message.subject == 'BEACON') {
         onBeacon(context);
+    } else if (context.message.subject == 'HEARTBEAT') {
+        onHeartbeat(context);
     } else if (context.message.subject == 'RECORD') {
         var rtype, id, rec;
         let recordList = context.message.body;

@@ -30,6 +30,7 @@ const recordTypes = [
     "INGRESS",
     "EGRESS",
     "COLLECTOR",
+    "PROCESS_GROUP",
 ];
 
 const attributes = [
@@ -73,6 +74,13 @@ const attributes = [
     "octetsUnacked",
     "windowClosures",
     "windowSize",
+    "flowCountL4",
+    "flowCountL7",
+    "flowRateL4",
+    "flowRateL7",
+    "duration",
+    "image",
+    "group",
 ];
 
 exports.PARENT_INDEX      = "parent";

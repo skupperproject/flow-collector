@@ -38,7 +38,7 @@ class Record(object):
         return self.attributes.get(__name, self.annotations.get(__name, None))
 
     def __repr__(self):
-        str = "%s(%s)" % (self.rtype, self.id)
+        str = "%s(%s)" % (self.recordType, self.identity)
         if self.name:
             str += "[%s]" % self.name
         return str
@@ -68,6 +68,26 @@ class BusManager:
     def close(self):
         pass
 
+    def duration(self, usecs):
+        if usecs == None or usecs == '-':
+            return '-'
+        elif usecs < 1000:
+            return "%d uS" % usecs
+        elif usecs < 1000000:
+            return "%.2f mS" % (usecs / 1000.0)
+        elif usecs < 60000000:
+            return "%.2f sec" % (usecs / 1000000.0)
+        else:
+            days  = usecs / (3600000000 * 24)
+            hours = (usecs % (3600000000 * 24)) / 3600000000
+            min = (usecs % 3600000000) / 60000000
+            sec = (usecs % 60000000) / 1000000
+            if hours < 1 and days < 1:
+                return "%d:%02d" % (min, sec)
+            elif days < 1:
+                return "%d:%02d:%02d" % (hours, min, sec)
+            return "%dd %d:%02d" % (days, hours, min)
+
     def displayAddresses(self):
         disp = Display(prefix="  ")
         heads = []
@@ -77,7 +97,7 @@ class BusManager:
         heads.append(Header("current flows"))
 
         rows = []
-        records = self.query('/vanaddrs')
+        records = self.query('/addresses')
 
         for addr in records:
             row = []
@@ -91,7 +111,7 @@ class BusManager:
         dispRows = sorter.getSorted()
         disp.formattedTable(title, heads, dispRows)
 
-    def displayAddressSummary(self, address):
+    def displayAddressSummary(self, addresses, includeDeleted):
         listeners  = {}
         connectors = {}
         flows      = {}
@@ -101,19 +121,25 @@ class BusManager:
         sites      = {}
         routerIds  = []
         routers    = {}
+        records    = []
 
-        records = self.query('/flows?vanaddr=' + address)
+        for address in addresses:
+            rlist = self.query('/flows?vanaddr=' + address + ('&includeDeleted=1' if includeDeleted else ''))
+            for r in rlist:
+                r.attributes['vanaddr'] = address
+            records.extend(rlist)
+
         for record in records:
-            if record.rtype == 'LISTENER':
-                listeners[record.id] = record
+            if record.recordType == 'LISTENER':
+                listeners[record.identity] = record
                 if record.parent and record.parent not in routerIds:
                     routerIds.append(record.parent)
-            elif record.rtype == 'CONNECTOR':
-                connectors[record.id] = record
+            elif record.recordType == 'CONNECTOR':
+                connectors[record.identity] = record
                 if record.parent and record.parent not in routerIds:
                     routerIds.append(record.parent)
-            elif record.rtype == 'FLOW':
-                flows[record.id] = record
+            elif record.recordType == 'FLOW':
+                flows[record.identity] = record
             if record.process and record.process not in processIds:
                 processIds.append(record.process)
 
@@ -121,9 +147,9 @@ class BusManager:
             ids = ""
             for id in processIds:
                 ids += "id=%s&" % id
-            records = self.query('/record?' + ids[:-1])
+            records = self.query('/record?includeDeleted=1&' + ids[:-1])
             for record in records:
-                processes[record.id] = record
+                processes[record.identity] = record
                 if record.parent and record.parent not in siteIds:
                     siteIds.append(record.parent)
 
@@ -133,7 +159,7 @@ class BusManager:
                 ids += "id=%s&" % id
             records = self.query('/record?' + ids[:-1])
             for record in records:
-                routers[record.id] = record
+                routers[record.identity] = record
                 if record.parent and record.parent not in siteIds:
                     siteIds.append(record.parent)
 
@@ -141,9 +167,9 @@ class BusManager:
             ids = ""
             for id in siteIds:
                 ids += "id=%s&" % id
-            records = self.query('/record?' + ids[:-1])
+            records = self.query('/record?includeDeleted=1&' + ids[:-1])
             for record in records:
-                sites[record.id] = record
+                sites[record.identity] = record
 
         flowPairs = []
         for flow in flows.values():
@@ -166,6 +192,7 @@ class BusManager:
 
         disp = Display(prefix="  ")
         heads = []
+        heads.append(Header("id"))
         heads.append(Header("addr"))
         heads.append(Header("proto"))
         heads.append(Header("c.site"))
@@ -179,16 +206,19 @@ class BusManager:
         heads.append(Header("s.oct"))
         heads.append(Header("s.rate"))
         heads.append(Header("s.uack"))
-        heads.append(Header("c.stal"))
+        heads.append(Header("s.stal"))
         heads.append(Header("s.lat"))
         heads.append(Header("s.proc"))
         heads.append(Header("s.port"))
         heads.append(Header("s.site"))
+        heads.append(Header("dur"))
+        heads.append(Header("res"))
 
         rows = []
         for pair in flowPairs:
             row = []
-            row.append(address)
+            row.append(pair[0].identity if pair[0] else '-')
+            row.append(pair[0].vanaddr)
             row.append(pair[0].protocol if pair[0] else '-')
             row.append(pair[0].siteName if pair[0] else '-')
             row.append((processes[pair[0].process].name if pair[0].process else pair[0].sourceHost) if pair[0] else '-')
@@ -197,19 +227,28 @@ class BusManager:
             row.append(pair[0].octetRate if pair[0] else '-')
             row.append(pair[0].octetsUnacked if pair[0] else '-')
             row.append(pair[0].windowClosures if pair[0] else '-')
-            row.append(pair[0].latency if pair[0] else '-')
+            row.append(self.duration(pair[0].latency if pair[0] else '-'))
             row.append(pair[1].octets if pair[1] else '-')
             row.append(pair[1].octetRate if pair[1] else '-')
             row.append(pair[1].octetsUnacked if pair[1] else '-')
             row.append(pair[1].windowClosures if pair[1] else '-')
-            row.append(pair[1].latency if pair[1] else '-')
+            row.append(self.duration(pair[1].latency if pair[1] else '-'))
             row.append((processes[pair[1].process].name if pair[1].process else pair[1].destHost) if pair[1] else '-')
             row.append(connectors[pair[1].parent].destPort if pair[1] else '-')
             row.append(pair[1].siteName if pair[1] else '-')
+            row.append(self.duration(pair[0].duration if pair[0] else '-'))
+            row.append((pair[1].reason or '') if pair[1] else '-')
             rows.append(row)
         title = "Flows for address %s" % address
-        disp.formattedTable(title, heads, rows)
+        sorter = Sorter(heads, rows, 'id', 0, True)
+        dispRows = sorter.getSorted()
+        filteredRows = []
+        for dr in dispRows:
+            filteredRows.append(dr[1:])
+        disp.formattedTable(title, heads[1:], filteredRows)
 
+    def displayEndpoints(self):
+        pass
 
     def displaySites(self):
         disp = Display(prefix="  ")
@@ -241,8 +280,12 @@ def run(argv):
     try:
         if len(argv) == 2 and argv[1] == '-a':
             bm.displayAddresses()
-        elif len(argv) == 3 and argv[1] == '-a':
-            bm.displayAddressSummary(argv[2])
+        elif len(argv) >= 3 and argv[1] == '-a':
+            bm.displayAddressSummary(argv[2:], False)
+        elif len(argv) >= 3 and argv[1] == '-af':
+            bm.displayAddressSummary(argv[2:], True)
+        elif len(argv) == 3 and argv[1] == '-e':
+            bm.displayEndpoints(argv[2])
         elif len(argv) == 2 and argv[1] == '-s':
             bm.displaySites()
     finally:
